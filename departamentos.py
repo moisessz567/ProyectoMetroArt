@@ -1,10 +1,10 @@
 class Departamentos:
 
-    def __init__(self, id, nombre, obra):
+    def __init__(self, id, nombre):
         self.id = id
         self.nombre = nombre
-        self.obra = obra
+        
 
     def show (self):
         print(f"Id del departamento: {self.id}")
-        print(f"Nombre del nombre: {self.nombre}")
+        print(f"Nombre del departamento: {self.nombre}")

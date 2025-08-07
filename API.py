@@ -1,10 +1,21 @@
 import requests
 import json
 
-def api():
-    response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects/[objectID]/name=Kiyohara Yukinobu")
-    data = response.json()
+def __init__ (self):
+    """INIT
+    Recibe: n\a
+    Retorna: n\
+    """
+    pass
 
-    print(json.dumps(data, indent=4))
+def pull_departamentos():
+    response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/departments")
+    return(response.json())
+    
+    # for departamento in datos["departments"][:10]:
+    #     print(departamento["departmentId"], departamento["displayName"])
 
-api()
+
+    
+
+
