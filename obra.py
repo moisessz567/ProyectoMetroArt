@@ -11,7 +11,7 @@ class Obra:
 
         print(f"ID: {self.id}")
         print(f"Titulo: {self.titulo}")
-        print(f"Autor: ")
+        print(f"Autor: {self.autor}")
 
         print(f"Tipo: {self.tipo}")
         print(f"Año de Creacion: {self.anio_creacion}")
