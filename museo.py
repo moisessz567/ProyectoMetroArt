@@ -20,21 +20,17 @@ class Museo:
     A continuacion se le muestra un menu de opciones:
     Elija la opcion que desee:
     1- Ver obras
-    2- Ver horarios
+    2- Mostrar detalles de obra
+    3- Salir
     ==> """)
             if menu == "1":
                 self.opcion_ver_obras()
             elif menu == "2":
-                print("""Los Horarios de consulta son: 
-                      
-Lunes: 6 am - 11 pm
-Martes: 6 am - 11 pm
-Miercoles: 6 am - 11 pm
-Jueves: 6 am - 11 pm
-Viernes: 6 am - 10 pm
-Sabado: 8 am - 10 pm
-Domingo: 8 am - 9 pm 
-                      """)
+                pass
+            elif menu == "3":
+                break
+            else:
+                print("Opcion Invalida. Intente de nuevo")
                 
     def opcion_ver_obras (self):
         self.iniciar_departamentos()
@@ -46,13 +42,11 @@ Domingo: 8 am - 9 pm
     ==>    """)
         if opciones == "1":
             for depart in self.departamento:
-                    print()
                     depart.show()
             self.ver_obra_depart()
 
         elif opciones == "2":
             pass
-            
             
                 
     def iniciar_departamentos(self):
@@ -63,18 +57,54 @@ Domingo: 8 am - 9 pm
         
 
     def ver_obra_depart(self):
-        departamento_nombre = None
+
+        # Preguntar el nombre del departamento
         ver_obra = input("Para ver las obras, ingrese el nombre del departamento que desea ver: ")
-        for obra_dep in self.apiobras:
-            if obra_dep["departments"] == ver_obra:
-                departamento_nombre = obra_dep["departments"]
-        for obra in self.obras:
-            if departamento_nombre == obra_dep["departments"]:
-                obras = (Obra(obra["objectID"], obra["title"], obra["artistDisplayName"], obra["classification"], obra["objectDate"], obra["primaryImage"]))
-                obras.show()
+
+        # Buscar ID del departamento
+        dept_id = None
+        for d in self.departamento:
+            if d.nombre.lower() == ver_obra.lower():
+                dept_id = d.id
+                break
+
+        if dept_id is None:
+            print("Departamento no encontrado.")
+            return
+
+        # Llamar a la API para obtener IDs de obras de ese departamento
+        import requests
+        url = f"https://collectionapi.metmuseum.org/public/collection/v1/objects?departmentIds={dept_id}"
+        resp = requests.get(url).json()
+        object_ids = resp.get("objectIDs", [])
+
+        if not object_ids:
+            print("No se encontraron obras para este departamento.")
+            return
+
+        # Mostrar TODAS las obras con dos saltos de línea entre cada una
+        for obj_id in object_ids [:20]:
+            obra_data = requests.get(
+                f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obj_id}"
+            ).json()
+
+            obra = Obra(
+                obra_data["objectID"], obra_data["title"], obra_data["artistDisplayName"], obra_data["classification"], obra_data["objectDate"], obra_data["primaryImageSmall"])
+            obra.show_1()
+            print()
 
 
     def iniciar_obras(self):
         obras_api = self.apiobras["objects"]
         for obra in obras_api:
             self.obras.append(Obra(obra["objectID"], obra["title"], obra["artistDisplayName"], obra["classification"], obra["objectDate"], obra["primaryImage"]))
+
+    def ver_obras_autor(self):
+        self.iniciar_obras()
+        autor_api = self.apiobras["Objects"]["artistDisplayName"]
+        self.autor = []
+
+        for artist in autor_api:
+            self.autor.append(Autor(artist["artistDisplayName"], artist["artistNationality"], artist["artistBeginDate"], artist["artistEndDate"]))
+
+        

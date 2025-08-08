@@ -1,6 +1,6 @@
 import requests
 
-response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
+response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects/[objectID]")
 datos = response.json()
 
 print(datos)

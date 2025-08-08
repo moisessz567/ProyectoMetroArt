@@ -17,3 +17,7 @@ class Obra:
         print(f"Año de Creacion: {self.anio_creacion}")
         print(f"Imagen: {self.imagen}")
 
+    def show_1 (self):
+        print(f"ID: {self.id}")
+        print(f"Titulo: {self.titulo}")
+        print(f"Autor: {self.autor}")
