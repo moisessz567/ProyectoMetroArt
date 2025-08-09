@@ -1,6 +1,5 @@
 class Autor:
-    def __init__(self, id, nombre, nacionalidad, fecha_nacimiento, fecha_muerte):
-        self.id = id
+    def __init__(self, nombre, nacionalidad, fecha_nacimiento, fecha_muerte):
         self.nombre = nombre
         self.nacionalidad = nacionalidad
         self.fecha_nacimiento = fecha_nacimiento
