@@ -1,21 +1,48 @@
 from departamentos import Departamentos
 from obra import Obra
 from autor import Autor
-from API import obtener_departamentos, obtener_obras
-
+from API import obtener_departamentos
+from Csv_Reader import mostrar_nacionalidades
 
 class Museo:
+
+    """Clase principal que representa el sistema de gestión del Metropolitan Museum of Art
+    
+    Esta clase permite interactuar con la API del Met para:
+    - Explorar departamentos
+    - Buscar obras por diferentes criterios
+    - Mostrar detalles completos de obras
+    - Gestionar información de artistas
+    
+    Atributos:
+        apidepartamentos (dict): Datos crudos de departamentos desde la API
+        departamento (list[Departamentos]): Lista de objetos departamento
+        obras (list[Obra]): Lista de obras cargadas
+        autor (list[Autor]): Lista de autores registrados
+    """
+
     def __init__(self):
-        self.apidepartamentos = obtener_departamentos()  # Llama directamente a la función
+
+        """Inicializa el sistema del museo cargando datos iniciales"""
+
+        self.apidepartamentos = obtener_departamentos() 
         self.departamento = []
-        self.iniciar_departamentos()  # Inicializa los departamentos al crear el objeto
-        self.apiobras = obtener_obras()
+        self.iniciar_departamentos()  
         self.obras = []
         self.autor = []
 
     def start(self):
         
+        """Método principal que inicia la interfaz de usuario del sistema
         
+        Presenta un menú interactivo con las siguientes opciones:
+        1. Ver obras (con submenú de búsqueda)
+        2. Mostrar detalles de una obra específica
+        3. Salir del sistema
+        
+        El ciclo continúa hasta que el usuario seleccione la opción de salida
+        """
+
         while True:
             menu = input(""" Buen dia. Bienvenido a MetroArt 
     A continuacion se le muestra un menu de opciones:
@@ -34,8 +61,18 @@ class Museo:
                 print("Opcion Invalida. Intente de nuevo")
                 
     def opcion_ver_obras (self):
+
+        """Muestra submenú para buscar obras por diferentes criterios
+        
+        Opciones disponibles:
+        1. Por departamento
+        2. Por nacionalidad del artista
+        3. Por nombre de autor
+        
+        Cada opción llama al método correspondiente para realizar la búsqueda
+        """
+        
         self.iniciar_departamentos()
-        self.iniciar_autor()
         opciones = input("""Seleccione un metodo para buscar una obra:
     1- Ver por Departamento:(Podra ver y escoger el departamento de su preferencia, para posteriormente
                          ver las obras que lo conforman)
@@ -48,14 +85,24 @@ class Museo:
             self.ver_obra_depart()
 
         elif opciones == "2":
-            pass
+            mostrar_nacionalidades()
+            self.buscar_nacionalidad()
         
         elif opciones == "3":
-            for autor in self.autor:
-                autor.show()
+            autores = self.obtener_lista_autores()
+            print("Lista de autores encontrados:")
+            for autor in autores:
+                print(autor)
             self.ver_obras_autor()
                 
     def iniciar_departamentos(self):
+
+        """Carga y convierte los datos de departamentos desde la API en objetos Departamentos
+        
+        Procesa la respuesta de la API para crear instancias de la clase Departamentos
+        y las almacena en la lista self.departamento
+        """
+
         departamento_api = self.apidepartamentos["departments"]
 
         for departamento in departamento_api:
@@ -64,10 +111,13 @@ class Museo:
 
     def ver_obra_depart(self):
 
-        # Preguntar el nombre del departamento
-        ver_obra = input("Para ver las obras, ingrese el nombre del departamento que desea ver: ")
+        """Busca y muestra obras pertenecientes a un departamento específico
+        
+        El usuario debe ingresar el nombre exacto del departamento
+        Muestra hasta 20 obras del departamento seleccionado
+        """
 
-        # Buscar ID del departamento
+        ver_obra = input("Para ver las obras, ingrese el nombre del departamento que desea ver: ")
         dept_id = None
         for d in self.departamento:
             if d.nombre.lower() == ver_obra.lower():
@@ -78,7 +128,6 @@ class Museo:
             print("Departamento no encontrado")
             return
 
-        # Llamar a la API para obtener IDs de obras de ese departamento
         import requests
         url = f"https://collectionapi.metmuseum.org/public/collection/v1/objects?departmentIds={dept_id}"
         resp = requests.get(url).json()
@@ -94,58 +143,161 @@ class Museo:
             obra.show_1()
             print()
 
+    def buscar_nacionalidad(self):
 
-    def iniciar_obras(self):
-        obras_api = self.apiobras["objects"]
-        for obra in obras_api:
-            self.obras.append(Obra(obra["objectID"], obra["title"], obra["artistDisplayName"], obra["classification"], obra["objectDate"], obra["primaryImage"]))
+        """Busca obras por nacionalidad del artista
+        
+        Muestra hasta 10 obras que coincidan con la nacionalidad ingresada
+        Maneja errores de conexión y casos donde no se encuentran resultados
+        """
 
-    def iniciar_autor(self):
-        pass
-        # autor_api = self.apiobras["objects"]
-        # for autor in autor_api:
-        #     self.autor.append(Autor(autor["artistDisplayName"], autor["artistNationality"], autor["artistBeginDate"], autor["artistEndDate"]))
+        nacionalidad = input("\nIngrese la nacionalidad exacta que desea buscar (ej: American): ").strip() 
+        if not nacionalidad:
+            print("Debe ingresar una nacionalidad válida")
+            return
+
+        try:
+            import requests
+             
+            search_url = "https://collectionapi.metmuseum.org/public/collection/v1/objects"
+            response = requests.get(search_url, timeout=10)
+            response.raise_for_status()
+            object_ids = response.json().get('objectIDs', [])[:50]
+
+            obras_encontradas = 0
+
+            for obj_id in object_ids:
+                try:
+                    
+                    obra_url = f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obj_id}"
+                    obra_response = requests.get(obra_url, timeout=10)
+                    obra_response.raise_for_status()
+                    obra_data = obra_response.json()
+
+                    # Verificamos la nacionalidad del artista
+                    if obra_data.get('artistNationality', '').lower() == nacionalidad.lower():
+                    # Creamos y mostramos la obra
+                        obra = Obra(
+                        obra_data.get('objectID', ''),
+                        obra_data.get('title', 'Sin título'),
+                        obra_data.get('artistDisplayName', 'Desconocido'),
+                        obra_data.get('classification', ''),
+                        obra_data.get('objectDate', ''),
+                        obra_data.get('primaryImageSmall', '')
+                        )
+                    obra.show_1()
+                    print() 
+                    obras_encontradas += 1
+
+                    # Limitar a 10 resultados para no saturar
+                    if obras_encontradas >= 10:
+                        break
+
+                except requests.exceptions.RequestException:
+                    continue # Si falla una obra, continuamos con la siguiente
+
+            if obras_encontradas == 0:
+                print(f"No se encontraron obras para autores de nacionalidad '{nacionalidad}'")
+                print("Intente de nuevo")
+                
+        except requests.exceptions.RequestException as e:
+            print(f"\nError al conectar con la API del Museo: {str(e)}")
+        except Exception as e:
+            print(f"\nOcurrió un error inesperado: {str(e)}")
+
+    def obtener_lista_autores(self, limite=100):
+
+        """Obtiene una lista única de nombres de autores desde la API.
+        
+        Argumentos:
+            limite (int): Número máximo de obras a consultar para extraer autores.
+            
+        Returns:
+            list: Lista ordenada de nombres de autores únicos.
+        """
+
+        import requests
+
+        ids_resp = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
+        todos_ids = ids_resp.json().get("objectIDs", [])[:limite]
+
+        autores = set()
+
+        for obj_id in todos_ids:
+            resp = requests.get(f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obj_id}")
+            try:
+                obra_data = resp.json()
+            except ValueError:
+                continue
+
+            nombre_autor = obra_data.get("artistDisplayName", "").strip()
+            if nombre_autor:
+                autores.add(nombre_autor)
+
+        return sorted(list(autores))
 
     def ver_obras_autor(self):
-        import requests
-        # Suponiendo que self.obras es una lista de objetos de la clase Obra
-        buscar_autor = input("Ingrese el nombre y apellido del autor: ")
-        # Inicializar una lista para almacenar las obras encontradas
-        obras_encontradas = []
-        # Buscar el autor en la lista de obras
-        for a in self.obras:
-            if a.nombre.lower() == buscar_autor.lower():
-                obras_encontradas.append(a)  # Agregar la obra a la lista si el autor coincide
-        # Verificar si se encontraron obras del autor
-        if not obras_encontradas:
-            print("Autor no encontrado")
-        else:
-            print(f"Obras encontradas para el autor '{buscar_autor}':")
-    
-        # Obtener las obras de la API
-        response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
-        object_ids = response.json().get("objectIDs", [])  # Obtener los primeros 100 IDs de objetos
+
+        """Busca y muestra obras de un autor específico
+        
+        Muestra hasta 20 obras que coincidan con el nombre del autor ingresado
+        """
+
+        import requests        
+        nombre_autor = input("Ingrese el nombre del autor que desea buscar: ").strip().lower()
+        ids_url = "https://collectionapi.metmuseum.org/public/collection/v1/objects"
+        try:
+            resp = requests.get(ids_url, timeout=10)
+            resp.raise_for_status()
+            object_ids = resp.json().get("objectIDs", [])[:50] 
+        except:
+            print("Error al obtener la lista de obras")
+            return
 
         if not object_ids:
-            print("No se encontraron obras para este autor")
-        else:
-            for obj_id in object_ids:
-                obj_url = requests.get(f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obj_id}")
-                obj_data = obj_url.json()
-            # Verificar si el autor de la obra coincide con el autor buscado
-            if obj_data.get("artistDisplayName").lower() == buscar_autor.lower():
-                obra = Obra(
-                    obj_data["objectID"],
-                    obj_data["title"],
-                    obj_data["artistDisplayName"],
-                    obj_data["classification"],
-                    obj_data["objectDate"],
-                    obj_data["primaryImageSmall"]
+            print("No se encontraron obras en la base de datos")
+            return
+
+        encontrados = 0
+
+        for obj_id in object_ids:
+            try:
+                r = requests.get(
+                    f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obj_id}",
+                    timeout=10
                 )
-                obra.show_1()  # Mostrar la obra
-                print()  # Espacio entre obras
+                if r.status_code != 200:
+                    continue  
+
+                obra_data = r.json()
+            except:
+                continue 
+
+            if obra_data.get("artistDisplayName", "").strip().lower() == nombre_autor:
+                obra = Obra(
+                    obra_data["objectID"],
+                    obra_data["title"],
+                    obra_data.get("artistDisplayName", "Desconocido"),
+                    obra_data.get("classification", ""),
+                    obra_data.get("objectDate", ""),
+                    obra_data.get("primaryImageSmall", "")
+                )
+                obra.show_1()
+                print()
+                encontrados += 1
+
+                if encontrados >= 20:  # Muestra máximo 20
+                    break
+
+        if encontrados == 0:
+            print(f"No se encontraron obras del autor '{nombre_autor}'.")
 
     def mostrar_detalles_obra(self):
+
+        """Muestra información detallada de una obra específica por ID
+        
+        Incluye opción para visualizar la imagen de la obra si está disponible
+        """
     
         import requests
         from PIL import Image
@@ -154,19 +306,19 @@ class Museo:
         try:
             obra_id = int(input("Ingrese el ID de la obra: "))
         except ValueError:
-            print("El ID debe ser un número.")
+            print("El ID debe ser un número")
             return
 
         url = f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obra_id}"
         resp = requests.get(url)
 
         if resp.status_code != 200:
-            print("No se pudo obtener la obra desde la API.")
+            print("No se pudo obtener la obra desde la API")
             return
 
         data = resp.json()
         if not data or not data.get("objectID"):
-            print("No se encontró ninguna obra con ese ID.")
+            print("No se encontró ninguna obra con ese ID")
             return
 
         
@@ -180,7 +332,7 @@ class Museo:
        
         obra = Obra(
             id=data.get("objectID"),
-                titulo=data.get("title", "Desconocido"),
+            titulo=data.get("title", "Desconocido"),
             autor=autor.nombre,  
             tipo=data.get("classification", "Desconocido"),
             anio_creacion=data.get("objectDate", "Desconocido"),
@@ -204,4 +356,4 @@ class Museo:
                 except Exception as e:
                     print(f"No se pudo mostrar la imagen: {e}")
         else:
-            print("No hay imagen disponible para esta obra.")
+            print("No hay imagen disponible para esta obra")
